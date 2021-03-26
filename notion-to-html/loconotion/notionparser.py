@@ -86,6 +86,7 @@ class Parser:
 
         # initialize chromedriver and start parsing
         self.driver = self.init_chromedriver()
+        self.driver.set_page_load_timeout(30)
         self.run(url)
 
     def get_page_config(self, token):
