@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Double-Option Key Speech-to-Text on macOS</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      max-width: 600px;
+      margin: 2rem auto;
+      line-height: 1.6;
+    }
+    pre {
+      background: #f4f4f4;
+      padding: 1rem;
+      overflow-x: auto;
+    }
+    code {
+      font-family: monospace;
+    }
+  </style>
+</head>
+<body>
+  <h1>Double-Option Key Speech-to-Text on macOS</h1>
+
+  <p>This guide shows you how to trigger local Whisper speech-to-text by double-tapping the Option key using Karabiner-Elements and whisper.cpp.</p>
+
+  <h2>1. Install whisper.cpp</h2>
+  <pre><code>brew install cmake
+git clone https://github.com/ggerganov/whisper.cpp
+cd whisper.cpp
+make
+./models/download-ggml-model.sh base.en</code></pre>
+
+  <h2>2. Create the Toggle Script</h2>
+  <p>Save this as <code>~/.stt-toggle.sh</code> and make it executable:</p>
+  <pre><code>chmod +x ~/.stt-toggle.sh</code></pre>
+
+  <pre><code>#!/bin/bash
+
+PID_FILE="/tmp/stt_recording.pid"
+AUDIO_FILE="/tmp/stt_input.wav"
+TRANSCRIPT_FILE="/tmp/stt_transcript.txt"
+WHISPER_MAIN="/Users/ethan/Dev/automation/main"
+WHISPER_MODEL="/Users/ethan/Dev/whisper.cpp/models/ggml-base.en.bin"
+
+if [ -f "$PID_FILE" ]; then
+  kill "$(cat $PID_FILE)"
+  rm "$PID_FILE"
+  "$WHISPER_MAIN" -m "$WHISPER_MODEL" -f "$AUDIO_FILE" -of "/tmp/stt_transcript"
+  cat "$TRANSCRIPT_FILE" | pbcopy
+  osascript -e 'tell application "System Events" to keystroke "v" using command down'
+  rm "$AUDIO_FILE" "$TRANSCRIPT_FILE"
+else
+  afplay /System/Library/Sounds/Pop.aiff
+  ffmpeg -f avfoundation -i ":0" -acodec pcm_s16le -ar 16000 "$AUDIO_FILE" -y &
+  echo $! > "$PID_FILE"
+fi</code></pre>
+
+  <h2>3. Configure Karabiner-Elements</h2>
+  <p>Edit or create <code>~/.config/karabiner/karabiner.json</code> and add the following profile:</p>
+
+  <pre><code>{
+  "profiles": [
+    {
+      "name": "Default",
+      "selected": true,
+      "complex_modifications": {
+        "rules": [
+          {
+            "description": "Double Option to toggle STT",
+            "manipulators": [
+              {
+                "type": "basic",
+                "from": {
+                  "simultaneous": [
+                    { "key_code": "left_option" },
+                    { "key_code": "left_option" }
+                  ],
+                  "modifiers": {
+                    "optional": ["any"]
+                  }
+                },
+                "to": [
+                  {
+                    "shell_command": "~/.stt-toggle.sh"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}</code></pre>
+
+  <h2>4. Done</h2>
+  <p>Double-tap <strong>Left Option</strong> to start recording. Double-tap again to stop, transcribe, and paste the result wherever your cursor is focused.</p>
+</body>
+</html>
